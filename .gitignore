@@ -1,0 +1,12 @@
+__pycache__/
+instance/
+.env
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
