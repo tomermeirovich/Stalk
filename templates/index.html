@@ -5,13 +5,12 @@
   <h2 class="text-3xl font-bold mb-6 text-center text-primary">פוסט חדש</h2>
   <form method="POST" action="{{ url_for('post') }}">
     <div class="mb-4">
-      <textarea
-        name="content"
-        rows="3"
+      <textarea name="content" rows="1" maxlength="500" <!-- תחימת הפוסטים -->
         class="w-full p-2 border border-silver rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         placeholder="מה עובר עליך?"
         required
-      ></textarea>
+      ></textarea
+      >
     </div>
     <button
       type="submit"
@@ -32,6 +31,20 @@
           class="w-10 h-10 rounded-full mr-4 object-cover"
         />
         <span class="font-bold text-primary">{{ post.user.username }}</span>
+        {% if post.user_id == current_user.id %}
+        <form
+          action="{{ url_for('delete_post', post_id=post.id) }}"
+          method="POST"
+          class="ml-auto"
+        >
+          <button
+            type="submit"
+            class="text-red-500 hover:text-red-700 transition duration-300"
+          >
+            🗑️
+          </button>
+        </form>
+        {% endif %}
       </div>
       <p class="text-primary mb-2">{{ post.content }}</p>
       <p class="text-sm text-silver">
@@ -51,6 +64,20 @@
             <span class="font-semibold text-primary"
               >{{ comment.user.username }}:</span
             >
+            {% if comment.user_id == current_user.id %}
+            <form
+              action="{{ url_for('delete_comment', comment_id=comment.id) }}"
+              method="POST"
+              class="ml-auto"
+            >
+              <button
+                type="submit"
+                class="text-red-500 hover:text-red-700 transition duration-300"
+              >
+                🗑️
+              </button>
+            </form>
+            {% endif %}
           </div>
           <p class="mt-1 text-primary">{{ comment.content }}</p>
         </div>

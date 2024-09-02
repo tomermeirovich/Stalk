@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -31,9 +32,10 @@ class User(db.Model):
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
-    comments = db.relationship('Comment', backref='post', lazy='dynamic')
+    likes = db.relationship('Like', backref='liked_post', lazy='dynamic')
+    dislikes = db.relationship('Dislike', backref='disliked_post', lazy='dynamic')
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -49,15 +51,22 @@ class Like(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
-
     user = db.relationship('User', backref=db.backref('likes', lazy='dynamic'))
-    post = db.relationship('Post', backref=db.backref('likes', lazy='dynamic'))
+    post = db.relationship('Post', backref=db.backref('liked_post', lazy='dynamic'))
 
 class Dislike(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
-
     user = db.relationship('User', backref=db.backref('dislikes', lazy='dynamic'))
-    post = db.relationship('Post', backref=db.backref('dislikes', lazy='dynamic'))
+    post = db.relationship('Post', backref=db.backref('disliked_post', lazy='dynamic'))
+
+class Friend(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    friend_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('friends', lazy='dynamic'))
+    friend = db.relationship('User', foreign_keys=[friend_id], backref=db.backref('friend_of', lazy='dynamic'))

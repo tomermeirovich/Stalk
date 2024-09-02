@@ -1,8 +1,9 @@
 import pytest
 from app import app, db
-from models import User, Post, Like, Dislike
+from models import User, Post, Like, Dislike, Friend
 import io
 from flask import url_for
+
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
@@ -76,7 +77,7 @@ def test_like_post(client):
     assert response.status_code == 302
     assert response.location == url_for('index')
     
-    like = Like.query.first()
+    like = Like.query.filter_by(post_id=post.id).first()
     assert like is not None
     assert like.user.username == 'testuser'
     assert like.post.content == 'Test post'
