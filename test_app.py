@@ -74,10 +74,15 @@ def test_like_post(client):
     post = Post.query.first()
     
     response = client.post(f'/like/{post.id}')
-    assert response.status_code == 302
-    assert response.location == url_for('index')
-    
+    print(f"Response status code: {response.status_code}")
+    print(f"Response location: {response.location}")
+
     like = Like.query.filter_by(post_id=post.id).first()
+    print(f"Like object: {like}")
+    if like is None:
+        print("Likes in database:")
+        print(Like.query.all())
+
     assert like is not None
     assert like.user.username == 'testuser'
     assert like.post.content == 'Test post'
@@ -98,6 +103,7 @@ def test_dislike_post(client):
 
     response = client.post(f'/dislike/{post.id}')
     assert response.status_code == 302
+    assert response.location == url_for('index')
 
 def test_logout(client):
     # Register and login

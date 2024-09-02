@@ -42,15 +42,33 @@
         <p class="text-xl">
           רשת חברתית לשיח מעניין על מניות ודעות לא פופולריות
         </p>
-        {% if 'user_id' in session %}
+        {% if current_user.is_authenticated %}
         <div class="flex items-center">
-          <a href="{{ url_for('profile') }}" class="mr-4">
+          <a
+            href="{{ url_for('profile', user_id=current_user.id) }}"
+            class="mr-4"
+          >
             <img
               src="{{ url_for('static', filename='uploads/' + current_user.profile_picture) }}"
               alt="Profile"
               class="w-8 h-8 rounded-full"
             />
           </a>
+          <form
+            action="{{ url_for('search_users') }}"
+            method="GET"
+            class="mr-4"
+          >
+            <input
+              type="text"
+              name="query"
+              placeholder="חפש משתמשים"
+              class="px-2 py-1 border border-silver rounded-md"
+            />
+            <button type="submit" class="btn-primary px-2 py-1 rounded-md ml-2">
+              חפש
+            </button>
+          </form>
           <a
             href="{{ url_for('logout') }}"
             class="btn-primary hover:bg-silver px-4 py-2 rounded"

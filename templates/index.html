@@ -5,11 +5,15 @@
   <h2 class="text-3xl font-bold mb-6 text-center text-primary">פוסט חדש</h2>
   <form method="POST" action="{{ url_for('post') }}">
     <div class="mb-4">
-      <textarea name="content" rows="1" maxlength="500" <!-- תחימת הפוסטים -->
+      <textarea
+        name="content"
+        rows="4"
+        maxlength="500"
         class="w-full p-2 border border-silver rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         placeholder="מה עובר עליך?"
         required
-      ></textarea
+      >
+{{ request.form.get('content', '') }}</textarea
       >
     </div>
     <button
@@ -24,27 +28,47 @@
   <ul>
     {% for post in posts %}
     <li class="border-b border-silver py-4">
-      <div class="flex items-center mb-2">
-        <img
-          src="{{ url_for('static', filename='uploads/' + (post.user.profile_picture if post.user.profile_picture else 'default_frog.png')) }}"
-          alt="{{ post.user.username }}"
-          class="w-10 h-10 rounded-full mr-4 object-cover"
-        />
-        <span class="font-bold text-primary">{{ post.user.username }}</span>
-        {% if post.user_id == current_user.id %}
-        <form
-          action="{{ url_for('delete_post', post_id=post.id) }}"
-          method="POST"
-          class="ml-auto"
-        >
-          <button
-            type="submit"
-            class="text-red-500 hover:text-red-700 transition duration-300"
+      <div class="flex items-center mb-2 justify-between">
+        <div class="flex items-center">
+          <a
+            href="{{ url_for('profile', user_id=post.user.id) }}"
+            class="flex items-center"
           >
-            🗑️
-          </button>
-        </form>
-        {% endif %}
+            <img
+              src="{{ url_for('static', filename='uploads/' + (post.user.profile_picture if post.user.profile_picture else 'default_frog.png')) }}"
+              alt="{{ post.user.username }}"
+              class="w-10 h-10 rounded-full mr-4 object-cover"
+            />
+            <span class="font-bold text-primary ml-2"
+              >{{ post.user.username }}</span
+            >
+          </a>
+        </div>
+        <div class="flex items-center">
+          <form
+            action="{{ url_for('like_post', post_id=post.id) }}"
+            method="POST"
+            class="mr-2"
+          >
+            <button
+              type="submit"
+              class="text-green-500 hover:text-green-700 transition duration-300"
+            >
+              👍 {{ post.likes.count() }}
+            </button>
+          </form>
+          <form
+            action="{{ url_for('dislike_post', post_id=post.id) }}"
+            method="POST"
+          >
+            <button
+              type="submit"
+              class="text-red-500 hover:text-red-700 transition duration-300"
+            >
+              👎 {{ post.dislikes.count() }}
+            </button>
+          </form>
+        </div>
       </div>
       <p class="text-primary mb-2">{{ post.content }}</p>
       <p class="text-sm text-silver">
@@ -55,31 +79,52 @@
         <h4 class="font-bold text-lg mb-2 text-primary">תגובות:</h4>
         {% for comment in post.comments %}
         <div class="bg-white p-2 rounded mb-2 shadow border border-silver">
-          <div class="flex items-center">
-            <img
-              src="{{ url_for('static', filename='uploads/' + comment.user.profile_picture) }}"
-              alt="{{ comment.user.username }}"
-              class="w-8 h-8 rounded-full mr-2"
-            />
-            <span class="font-semibold text-primary"
-              >{{ comment.user.username }}:</span
-            >
-            {% if comment.user_id == current_user.id %}
-            <form
-              action="{{ url_for('delete_comment', comment_id=comment.id) }}"
-              method="POST"
-              class="ml-auto"
-            >
-              <button
-                type="submit"
-                class="text-red-500 hover:text-red-700 transition duration-300"
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <a
+                href="{{ url_for('profile', user_id=comment.user.id) }}"
+                class="flex items-center"
               >
-                🗑️
-              </button>
-            </form>
-            {% endif %}
+                <img
+                  src="{{ url_for('static', filename='uploads/' + comment.user.profile_picture) }}"
+                  alt="{{ comment.user.username }}"
+                  class="w-8 h-8 rounded-full mr-4"
+                />
+                <span class="font-semibold text-primary"
+                  >{{ comment.user.username }}</span
+                >
+              </a>
+            </div>
+            <div class="flex items-center">
+              <form
+                action="{{ url_for('like_comment', comment_id=comment.id) }}"
+                method="POST"
+                class="mr-2"
+              >
+                <button
+                  type="submit"
+                  class="text-green-500 hover:text-green-700 transition duration-300"
+                >
+                  👍 {{ comment.likes.count() }}
+                </button>
+              </form>
+              <form
+                action="{{ url_for('dislike_comment', comment_id=comment.id) }}"
+                method="POST"
+              >
+                <button
+                  type="submit"
+                  class="text-red-500 hover:text-red-700 transition duration-300"
+                >
+                  👎 {{ comment.dislikes.count() }}
+                </button>
+              </form>
+            </div>
           </div>
-          <p class="mt-1 text-primary">{{ comment.content }}</p>
+          <p class="mt-1 text-primary">{{ comment.content | e }}</p>
+          <p class="text-xs text-silver mt-1">
+            {{ comment.timestamp.strftime('%d/%m/%Y %H:%M') }}
+          </p>
         </div>
         {% endfor %}
         <form

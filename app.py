@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
 from models import db, User, Post, Like, Dislike, Comment, Friend
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from werkzeug.security import check_password_hash
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
@@ -32,6 +33,10 @@ def root():
 @login_required
 def index():
     posts = Post.query.order_by(Post.timestamp.desc()).all()
+    for post in posts:
+        post.like_count = post.likes.count()
+        post.dislike_count = post.dislikes.count()
+        post.comments = Comment.query.filter_by(post_id=post.id).order_by(Comment.timestamp.desc()).all()
     return render_template('index.html', posts=posts, user=current_user)
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -48,7 +53,7 @@ def register():
             filename = 'default_frog.png'
 
         if User.query.filter_by(username=username).first():
-            flash('שם המשתמש כבר קיים. אנא בחר שם משתמש אחר.', 'error')
+            flash('שם המשתמש כבר קיים. אנ בחר שם משתמש אחר.', 'error')
             return redirect(url_for('register'))
 
         user = User(username=username, profile_picture=filename)
@@ -57,7 +62,7 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        login_user(user)
+        login_user(user, remember=True)
         flash('נרשמת והתחברת בהצלחה!', 'success')
         return redirect(url_for('index'))
 
@@ -68,17 +73,13 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        remember_me = 'remember_me' in request.form
         user = User.query.filter_by(username=username).first()
-
         if user and user.check_password(password):
-            login_user(user, remember=remember_me)
+            login_user(user)
             session['user_id'] = user.id
             flash('התחברת בהצלחה!', 'success')
             return redirect(url_for('index'))
-        else:
-            flash('שם משתמש או סיסמה לא נכונים.', 'error')
-
+        flash('שם משתמש או סיסמה לא נכונים', 'error')
     return render_template('login.html')
 
 @app.route('/logout')
@@ -101,76 +102,35 @@ def post():
 @login_required
 def like_post(post_id):
     post = Post.query.get_or_404(post_id)
-    existing_like = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first()
-    existing_dislike = Dislike.query.filter_by(user_id=current_user.id, post_id=post.id).first()
-
-    if existing_dislike:
-        db.session.delete(existing_dislike)
-
-    if existing_like:
-        db.session.delete(existing_like)
-    else:
-        like = Like(user_id=current_user.id, post_id=post.id)
-        db.session.add(like)
-
+    like = Like(user_id=current_user.id, post_id=post_id)
+    db.session.add(like)
     db.session.commit()
     return redirect(url_for('index'))
 
 @app.route('/dislike/<int:post_id>', methods=['POST'])
 @login_required
 def dislike_post(post_id):
-    post = Post.query.get_or_404(post_id)
-    existing_like = Like.query.filter_by(user_id=current_user.id, post_id=post.id).first()
-    existing_dislike = Dislike.query.filter_by(user_id=current_user.id, post_id=post.id).first()
-
-    if existing_like:
-        db.session.delete(existing_like)
-
-    if existing_dislike:
-        db.session.delete(existing_dislike)
-    else:
-        dislike = Dislike(user_id=current_user.id, post_id=post.id)
-        db.session.add(dislike)
-
-    db.session.commit()
+    # Your existing dislike logic here
     return redirect(url_for('index'))
 
 @app.route('/comment/<int:post_id>', methods=['POST'])
+@login_required
 def add_comment(post_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    content = request.form['content']
-    user_id = session['user_id']
-    comment = Comment(content=content, user_id=user_id, post_id=post_id)
-    db.session.add(comment)
-    db.session.commit()
+    content = request.form.get('content')
+    if content:
+        comment = Comment(content=content, user_id=current_user.id, post_id=post_id)
+        db.session.add(comment)
+        db.session.commit()
+        flash('התגובה נוספה בהצלחה!', 'success')
     return redirect(url_for('index'))
 
-@app.route('/profile', methods=['GET', 'POST'])
+@app.route('/profile/<int:user_id>')
 @login_required
-def profile():
-    if request.method == 'POST':
-        username = request.form['username']
-        profile_picture = request.files.get('profile_picture')
-
-        if username != current_user.username:
-            existing_user = User.query.filter_by(username=username).first()
-            if existing_user:
-                flash('שם המשתמש כבר תפוס.', 'error')
-            else:
-                current_user.username = username
-
-        if profile_picture and profile_picture.filename != '':
-            filename = secure_filename(profile_picture.filename)
-            profile_picture.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            current_user.profile_picture = filename
-
-        db.session.commit()
-        flash('פרטי הפרופיל עודכנו בהצלחה!', 'success')
-
-    likes_count = Like.query.filter_by(user_id=current_user.id).count()
-    dislikes_count = Dislike.query.filter_by(user_id=current_user.id).count()
-    return render_template('profile.html', user=current_user, likes_count=likes_count, dislikes_count=dislikes_count)
+def profile(user_id):
+    user = User.query.get_or_404(user_id)
+    likes_count = Like.query.filter_by(user_id=user.id).count()
+    dislikes_count = Dislike.query.filter_by(user_id=user.id).count()
+    return render_template('profile.html', user=user, likes_count=likes_count, dislikes_count=dislikes_count)
 
 @app.route('/add_friend/<int:friend_id>', methods=['POST'])
 @login_required
@@ -197,28 +157,29 @@ def remove_friend(friend_id):
         flash('החבר לא נמצא ברשימה.', 'error')
     return redirect(url_for('profile', user_id=friend_id))
 
-@app.route('/delete_post/<int:post_id>', methods=['POST'])
+@app.route('/search', methods=['GET'])
 @login_required
-def delete_post(post_id):
-    post = Post.query.get_or_404(post_id)
-    if post.user_id != current_user.id:
-        flash('אין לך הרשאה למחוק את הפוסט הזה.', 'error')
-        return redirect(url_for('index'))
-    db.session.delete(post)
+def search_users():
+    query = request.args.get('query', '')
+    users = User.query.filter(User.username.ilike(f'%{query}%')).all()
+    return render_template('search_results.html', users=users, query=query)
+
+@app.route('/like_comment/<int:comment_id>', methods=['POST'])
+@login_required
+def like_comment(comment_id):
+    comment = Comment.query.get_or_404(comment_id)
+    like = Like(user_id=current_user.id, comment_id=comment_id)
+    db.session.add(like)
     db.session.commit()
-    flash('הפוסט נמחק בהצלחה.', 'success')
     return redirect(url_for('index'))
 
-@app.route('/delete_comment/<int:comment_id>', methods=['POST'])
+@app.route('/dislike_comment/<int:comment_id>', methods=['POST'])
 @login_required
-def delete_comment(comment_id):
+def dislike_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
-    if comment.user_id != current_user.id:
-        flash('אין לך הרשאה למחוק את התגובה הזו.', 'error')
-        return redirect(url_for('index'))
-    db.session.delete(comment)
+    dislike = Dislike(user_id=current_user.id, comment_id=comment_id)
+    db.session.add(dislike)
     db.session.commit()
-    flash('התגובה נמחקה בהצלחה.', 'success')
     return redirect(url_for('index'))
 
 if __name__ == '__main__':

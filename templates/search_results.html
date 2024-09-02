@@ -1,0 +1,21 @@
+{% extends "base.html" %} {% block content %}
+<div class="max-w-2xl mx-auto">
+  <h2 class="text-2xl font-bold mb-4">תוצאות חיפוש עבור "{{ query }}"</h2>
+  {% if users %}
+  <ul>
+    {% for user in users %}
+    <li class="mb-2">
+      <a
+        href="{{ url_for('profile', user_id=user.id) }}"
+        class="text-primary hover:underline"
+      >
+        {{ user.username }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>לא נמצאו תוצאות.</p>
+  {% endif %}
+</div>
+{% endblock %}
